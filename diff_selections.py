@@ -2,6 +2,7 @@ import sublime
 import sublime_plugin
 
 from os import path
+import itertools
 import subprocess
 import tempfile
 
@@ -17,23 +18,19 @@ class DiffSelectionsCommand(sublime_plugin.TextCommand):
 
         view = self.view
 
-        # We only want the two first selections, keep a counter
-        i = 0
-
         # Diff tools require files. Create a temporary directory to put the temporary files.
         with tempfile.TemporaryDirectory() as tmpdir:
 
             leftfile = path.join(tmpdir, 'left')
             rightfile = path.join(tmpdir, 'right')
 
-            for s in view.sel():
-                if i == 0:
-                    with open(leftfile, 'w') as left:
-                        left.write(view.substr(s))
-                if i == 1:
-                    with open(rightfile, 'w') as right:
-                        right.write(view.substr(s))
-                i+=1
+            selections = [view.substr(s) for s in itertools.islice(view.sel(), 2)]
+
+            with open(leftfile, 'w') as left:
+                left.write(selections[0])
+
+            with open(rightfile, 'w') as right:
+                right.write(selections[1])
 
             # Use check_call to wait for the diff tool to quit, in order to keep the temporary files.
             subprocess.check_call([difftool, leftfile, rightfile])
